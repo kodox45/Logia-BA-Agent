@@ -1,0 +1,38 @@
+# BA runtime files (created dynamically per project)
+.ba/state.json
+.ba/index.json
+.ba/discovery/*.json
+.ba/requirements/*.json
+.ba/design/*.json
+.ba/design/assets/*
+!.ba/design/assets/.gitkeep
+.ba/validation/*.json
+.ba/triggers/*.json
+.ba/locks/*.lock
+
+# CC runtime files
+.claude/proposal/*
+!.claude/proposal/.gitkeep
+.claude/status/*
+!.claude/status/.gitkeep
+.claude/errors/*
+!.claude/errors/.gitkeep
+.claude/escalations/*
+!.claude/escalations/.gitkeep
+.claude/approval/*
+!.claude/approval/.gitkeep
+.claude/implementation/*
+!.claude/implementation/agents/.gitkeep
+
+# Prototype output
+prototype/*
+!prototype/.gitkeep
+
+# Build output
+src/
+server/
+tests/
+
+# OS files
+.DS_Store
+Thumbs.db
