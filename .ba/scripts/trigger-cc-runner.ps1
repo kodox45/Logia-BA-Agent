@@ -1,12 +1,9 @@
 param(
     [Parameter(Mandatory=$true)]
-    [string]$Workspace,
-    [Parameter(Mandatory=$true)]
-    [string]$PromptText
+    [string]$Workspace
 )
 
 $Workspace = $Workspace.Trim('"').Trim("'")
-$PromptText = $PromptText.Trim('"').Trim("'")
 
 # --- Auto-detect Claude Code CLI ---
 $claudePath = $null
@@ -31,17 +28,6 @@ if (-not $claudePath) {
     }
 }
 
-# --- Header ---
-Write-Host ""
-Write-Host "========================================" -ForegroundColor DarkCyan
-Write-Host "  BA Agent V5 - Claude Code Trigger" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor DarkCyan
-Write-Host "  Workspace : $Workspace" -ForegroundColor Gray
-Write-Host "  Claude    : $claudePath" -ForegroundColor Gray
-Write-Host "  Started   : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
-Write-Host "========================================" -ForegroundColor DarkCyan
-Write-Host ""
-
 # --- Validate ---
 if (-not $claudePath) {
     Write-Host "ERROR: Claude Code CLI not found." -ForegroundColor Red
@@ -57,6 +43,37 @@ if (-not (Test-Path $Workspace)) {
 }
 
 Set-Location $Workspace
+
+# --- Read prompt from file (avoids cmd.exe quote-stripping) ---
+$promptFile = Join-Path $Workspace ".ba/triggers/.cc-prompt"
+
+if (-not (Test-Path $promptFile)) {
+    Write-Host "ERROR: Prompt file not found: $promptFile" -ForegroundColor Red
+    Write-Host "  BA skill must write_file() the prompt before triggering." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+$PromptText = (Get-Content $promptFile -Raw).Trim()
+Remove-Item $promptFile -Force
+
+if ([string]::IsNullOrWhiteSpace($PromptText)) {
+    Write-Host "ERROR: Prompt file was empty." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+# --- Header ---
+Write-Host ""
+Write-Host "========================================" -ForegroundColor DarkCyan
+Write-Host "  BA Agent V5 - Claude Code Trigger" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor DarkCyan
+Write-Host "  Workspace : $Workspace" -ForegroundColor Gray
+Write-Host "  Claude    : $claudePath" -ForegroundColor Gray
+Write-Host "  Prompt    : $PromptText" -ForegroundColor Gray
+Write-Host "  Started   : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor Gray
+Write-Host "========================================" -ForegroundColor DarkCyan
+Write-Host ""
 
 # --- Step 1: Auto-execute prompt via pipe (prevents TTY hang) ---
 Write-Host "[Step 1] Running prompt via pipe..." -ForegroundColor Yellow
