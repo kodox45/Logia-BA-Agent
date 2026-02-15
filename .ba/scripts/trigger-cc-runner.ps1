@@ -75,31 +75,15 @@ Write-Host "  Started   : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -Foreground
 Write-Host "========================================" -ForegroundColor DarkCyan
 Write-Host ""
 
-# --- Step 1: Auto-execute prompt via pipe (prevents TTY hang) ---
-Write-Host "[Step 1] Running prompt via pipe..." -ForegroundColor Yellow
-Write-Host "---" -ForegroundColor DarkGray
-
-$startTime = Get-Date
-
-$result = $PromptText | & $claudePath -p --output-format text --dangerously-skip-permissions 2>&1
-$exitCode = $LASTEXITCODE
-
-Write-Host $result
-
-$elapsed = (Get-Date) - $startTime
-Write-Host ""
-Write-Host "---" -ForegroundColor DarkGray
-Write-Host "[Step 1 Complete] Exit: $exitCode | Duration: $($elapsed.ToString('mm\:ss'))" -ForegroundColor Yellow
+# --- Launch CC in interactive mode with initial prompt ---
+# Uses positional [prompt] argument instead of pipe mode (-p).
+# This gives full TUI visibility: tool calls, file reads/writes, and progress
+# are all visible in real-time, instead of a blank screen until completion.
+Write-Host "[Launch] Starting Claude Code with prompt..." -ForegroundColor Yellow
+Write-Host "  TUI will appear below. Type /exit or Ctrl+C when done." -ForegroundColor Gray
 Write-Host ""
 
-# --- Step 2: Continue in interactive mode ---
-Write-Host "========================================" -ForegroundColor DarkCyan
-Write-Host "[Step 2] Opening interactive session..." -ForegroundColor Green
-Write-Host "  You can now type commands or Ctrl+C to exit" -ForegroundColor Gray
-Write-Host "========================================" -ForegroundColor DarkCyan
-Write-Host ""
-
-& $claudePath --continue --dangerously-skip-permissions
+& $claudePath $PromptText --dangerously-skip-permissions
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor DarkCyan
