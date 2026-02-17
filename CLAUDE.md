@@ -244,13 +244,23 @@ Each mode is handled by a dedicated skill file. The skill contains the complete 
 | Mode | Skill File | Agent Strategy | Output |
 |------|-----------|---------------|--------|
 | Prototype | `.claude/skills/prototype/SKILL.md` | Single-agent | `prototype/index.html` |
-| Proposal | `.claude/skills/proposal/SKILL.md` | Single-agent | `.claude/proposal/` |
+| Proposal | `.claude/skills/proposal/SKILL.md` | Agent Teams (1 Lead + 2 Teammates) | `.claude/proposal/` |
 | Implementation | `.claude/skills/implementation/SKILL.md` | Multi-agent (justified) | `src/`, `server/`, `tests/` |
 
-### Why Prototype and Proposal Use Single-Agent
+### Why Prototype Uses Single-Agent
 
-These modes produce a single output artifact (one HTML file, one proposal set). A single agent reading all BA files directly produces higher quality output than multiple agents passing intermediate data to each other. Intermediate representations lose context and cause quality degradation.
+Prototype produces a single HTML file. A single agent reading all BA files
+directly produces higher quality output than splitting the work.
+
+### Why Proposal Uses Agent Teams
+
+Proposal involves two independent analytical domains: data modeling (entities + API)
+and system architecture (tech stack + folder structure). These run in parallel via
+specialized teammates, while the Lead performs deep cross-validation and synthesis.
+Each teammate still reads BA files directly — never from intermediate representations.
 
 ### Why Implementation Uses Multi-Agent
 
-Implementation produces many files across different domains (frontend, backend, tests, configuration). The work is naturally parallelizable by domain. Each sub-agent still reads BA files directly — never from a consolidated intermediate file.
+Implementation produces many files across different domains (frontend, backend,
+tests, configuration). The work is naturally parallelizable by domain. Each
+sub-agent still reads BA files directly.
