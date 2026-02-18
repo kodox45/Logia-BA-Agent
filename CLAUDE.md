@@ -25,6 +25,11 @@ ENSURE these directories exist (create if missing):
 ### Step 1: Detect Trigger
 
 ```
+FIRST: CHECK .ba/triggers/.cc-prompt content
+  IF content starts with "/" → SLASH COMMAND mode:
+    /implementation-setup → READ .claude/skills/implementation-setup/SKILL.md → EXECUTE
+  ELSE → continue to trigger file scan below
+
 SCAN .ba/triggers/ for (check in this order):
   prototype-iteration.json  → PROTOTYPE mode (iteration)
   prototype-request.json    → PROTOTYPE mode (new)
@@ -78,6 +83,9 @@ Each skill file contains the complete workflow for that mode. Follow it step by 
 | `.claude/proposal/` | WRITE | CC (proposal output) |
 | `.claude/implementation/` | FULL | CC (master plan, agents) |
 | `.claude/approval/` | READ only | BA (writes user decisions here) |
+| `.claude/agents/` | READ only | CC (static templates, pre-deployed) |
+| `.claude/skills/implementation-setup/` | READ only | CC (static generator template) |
+| `.claude/skills/implementation/` | FULL | CC (generated orchestration, written by Session 1) |
 | `prototype/` | FULL | CC (prototype output) |
 | `src/`, `server/`, `tests/` | FULL | CC (implementation output) |
 
@@ -245,7 +253,8 @@ Each mode is handled by a dedicated skill file. The skill contains the complete 
 |------|-----------|---------------|--------|
 | Prototype | `.claude/skills/prototype/SKILL.md` | Single-agent | `prototype/index.html` |
 | Proposal | `.claude/skills/proposal/SKILL.md` | Agent Teams (1 Lead + 2 Teammates) | `.claude/proposal/` |
-| Implementation | `.claude/skills/implementation/SKILL.md` | Multi-agent (justified) | `src/`, `server/`, `tests/` |
+| Implementation | `.claude/skills/implementation/SKILL.md` | Agent Teams (dynamic) | `src/`, `server/`, `tests/` |
+| Impl. Setup | `.claude/skills/implementation-setup/SKILL.md` | Single-agent (generator) | `.claude/implementation/`, `.claude/skills/implementation/` |
 
 ### Why Prototype Uses Single-Agent
 
@@ -259,8 +268,10 @@ and system architecture (tech stack + folder structure). These run in parallel v
 specialized teammates, while the Lead performs deep cross-validation and synthesis.
 Each teammate still reads BA files directly — never from intermediate representations.
 
-### Why Implementation Uses Multi-Agent
+### Why Implementation Uses Agent Teams (Dynamic)
 
-Implementation produces many files across different domains (frontend, backend,
-tests, configuration). The work is naturally parallelizable by domain. Each
-sub-agent still reads BA files directly.
+Implementation uses a 2-session approach. Session 1 (generator) analyzes the project
+and generates a project-specific SKILL.md + master plan. Session 2 (Lead) uses the
+generated SKILL.md to coordinate dynamic teammates (builders + validators) via Agent Teams.
+Team size varies by project: simple apps get 2 teammates, complex apps get 5+.
+Each teammate reads BA files directly — never from intermediate representations.

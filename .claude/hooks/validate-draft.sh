@@ -88,6 +88,42 @@ if [ -f "$DRAFTS_DIR/_architecture-draft.json" ]; then
     check_key "$DRAFTS_DIR/_architecture-draft.json" "folder_structure"
 fi
 
+# --- Implementation validation ---
+
+IMPL_DIR="${CLAUDE_PROJECT_DIR:-.}/.claude/implementation"
+
+if [ -d "$IMPL_DIR" ]; then
+  # Validate master-plan.json if it exists
+  if [ -f "$IMPL_DIR/master-plan.json" ]; then
+    if check_structure "$IMPL_DIR/master-plan.json"; then
+      if ! grep -q '"tasks"' "$IMPL_DIR/master-plan.json"; then
+        ERRORS="${ERRORS}master-plan.json: missing required key \"tasks\"\n"
+      fi
+      if ! grep -q '"team_composition"' "$IMPL_DIR/master-plan.json"; then
+        ERRORS="${ERRORS}master-plan.json: missing required key \"team_composition\"\n"
+      fi
+    fi
+  fi
+
+  # Validate approved-context.json if it exists
+  if [ -f "$IMPL_DIR/approved-context.json" ]; then
+    if check_structure "$IMPL_DIR/approved-context.json"; then
+      if ! grep -q '"status"' "$IMPL_DIR/approved-context.json"; then
+        ERRORS="${ERRORS}approved-context.json: missing required key \"status\"\n"
+      fi
+    fi
+  fi
+
+  # Validate validation-report.json if it exists
+  if [ -f "$IMPL_DIR/validation-report.json" ]; then
+    if check_structure "$IMPL_DIR/validation-report.json"; then
+      if ! grep -q '"results"' "$IMPL_DIR/validation-report.json"; then
+        ERRORS="${ERRORS}validation-report.json: missing required key \"results\"\n"
+      fi
+    fi
+  fi
+fi
+
 # --- Report ---
 
 if [ -n "$ERRORS" ]; then
