@@ -201,6 +201,27 @@ CRITICAL: Dashboard/aggregation features are NOT entities.
   Actions "view", "monitor", "track", "filter", "sort" → likely UI-only
 ```
 
+### Step 1b: Business Rule Field Extraction
+```
+FOR EACH feature in features.json:
+  FOR EACH rule in business_rules[]:
+    Extract FIELD NOUNS mentioned in the rule text:
+      "PIN verification required" → pin_verified (boolean) on relevant entity
+      "must reconcile cash" → reconciliation_amount, reconciliation_difference
+      "auto-deduct inventory" → quantity_before, quantity_deducted
+
+    IF rule mentions a verification/auth step:
+      → Add boolean field: {action}_verified (e.g., pin_verified, email_verified)
+      → Add timestamp field: {action}_verified_at
+    IF rule mentions a calculation result:
+      → Add decimal/integer field for the result
+    IF rule mentions an audit requirement:
+      → Add actor field: {action}_by (FK to User)
+
+Cross-check: Every business_rule that mentions a data point
+  MUST map to an entity attribute. No silent drops.
+```
+
 ### Step 2: Consolidation
 ```
 FOR EACH unique object noun:
@@ -292,7 +313,40 @@ FOR EACH flow: Map steps to API sequences. Action endpoints beyond CRUD:
   "assign"  → POST /api/{entity}/:id/assign
 
 FOR EACH role: Authorization rules per endpoint from permissions[]
+
+FOR EACH role in roles.json:
+  IF role has toggleable_permissions[]:
+    FOR EACH perm in toggleable_permissions:
+      → Find endpoints that match the permission scope
+      → Add to endpoint.roles_allowed with condition: "requires_permission: {perm.id}"
+      → Add middleware note: "Check user.active_permissions includes {perm.id}"
+    Track in api-design: auth.permission_checks[] array
+
+CRITICAL: toggleable_permissions are NOT the same as static permissions[].
+  Static permissions → always allowed for that role
+  Toggleable permissions → allowed only if owner has enabled it for that user
+  API must distinguish: roles_allowed vs permission_required
+
 FOR EACH business_rule: Attach to most relevant endpoint with source reference
+```
+
+### Business Rule Representation
+```
+FOR EACH business_rule in features.json:
+  IF rule contains a calculation (tax, discount, total, deduction):
+    → Capture as: { rule, formula: "descriptive_formula", inputs[], output, example }
+    → Example: { rule: "PPN calculation", formula: "subtotal × ppn_rate",
+                 inputs: ["subtotal", "ppn_rate"], output: "ppn_amount",
+                 example: "100000 × 0.11 = 11000" }
+  IF rule involves multi-step logic (recipe deduction, shift closing):
+    → Capture as: { rule, steps: ["step1", "step2", ...], triggers[], side_effects[] }
+    → Example: { rule: "Recipe deduction on order confirm",
+                 steps: ["lookup recipe for menu item", "multiply ingredient qty × order qty",
+                          "deduct from inventory", "check low stock threshold", "trigger alert if below"],
+                 triggers: ["order.status → confirmed"],
+                 side_effects: ["inventory.quantity reduced", "low_stock_alert created"] }
+  IF rule is a simple constraint (uniqueness, required, range):
+    → Capture as: { rule, type: "constraint", field, validation }
 ```
 
 ### For Client-Only Apps
@@ -306,6 +360,20 @@ FOR EACH entity:
 ### Endpoint ID Assignment
 - Use `EP-001` through `EP-NNN` (sequential, globally unique)
 - Every endpoint has `related_entity` referencing an entity name
+
+### Endpoint Domain Grouping
+```
+After generating all endpoints, assign each a domain_group:
+  domain_group = entity category or functional area
+
+Example groups: "order-management", "inventory", "kitchen", "payment",
+  "auth", "user-management", "reporting", "settings"
+
+In the draft output, add to each endpoint: "domain_group": "{group}"
+
+This enables downstream consumers to filter endpoints by domain
+without reading the entire file.
+```
 
 ## Output Files
 
@@ -327,7 +395,7 @@ Summary: `{ total_entities, total_fields, relationships, junction_tables, decisi
 Write to `.claude/proposal/drafts/_api-design-draft.json`.
 
 **Full-stack apps:** `{ version, base_path, auth{}, endpoints[], decisions_requiring_approval[], summary{} }`
-Each endpoint: `{ id (EP-xxx), method, path, description, source_features[], auth_required, roles_allowed[], params{query[], path[], body[]}, response{success{}, errors[]}, business_rules[], related_entity }`
+Each endpoint: `{ id (EP-xxx), method, path, description, source_features[], auth_required, roles_allowed[], params{query[], path[], body[]}, response{success{}, errors[]}, business_rules[], related_entity, domain_group }`
 
 **Client-only apps:** `{ version, storage_type: "localStorage", storage_operations[], decisions_requiring_approval[], summary{} }`
 Each operation: `{ entity, storage_key, operations: ["read","write","delete"], data_shape }`
@@ -570,7 +638,7 @@ Read all drafts:
 | 4 | **Naming:** Entity=PascalCase, fields=camelCase across all drafts | Normalize |
 | 5 | **D-xxx Unique:** T-DATA 001-049, T-SYSTEM 050-099, no overlaps | Lead reassigns D-100+ |
 | 6 | **EP-xxx Sequential:** No gaps, no duplicates | Renumber |
-| 7 | **Business Rules:** Every must_have rule attached to endpoint or constraint | Attach to nearest |
+| 7 | **Business Rules:** Every must_have business_rule attached to endpoint with formula/steps representation. Check: calculation rules have formula{}, multi-step rules have steps[], constraint rules have validation{}. Toggleable permissions have permission_required on endpoints. | Add missing representations, escalate if business logic unclear |
 | 8 | **State Machines:** Reachable states, valid transitions, terminal=empty | Fix or remove |
 
 ### Per-Feature Coverage Determination
@@ -632,11 +700,13 @@ Writing order (dependencies first):
 
 The Lead does NOT copy-paste drafts. Synthesis includes:
 
-1. **MERGE** decisions_requiring_approval from all 4 drafts → unified list (Lead new decisions get D-100+)
-2. **BUILD** coverage[] array from Step 4 per-feature analysis
-3. **RESOLVE** cross-draft conflicts (entity names ↔ screen mapping, auth choice ↔ API endpoints)
-4. **FIX** entity ↔ API cross-references (every endpoint.related_entity must match an entity.name)
-5. **GENERATE** statistics: total_entities, total_endpoints, total_decisions, coverage breakdown
+1. **COLLECT** decisions_requiring_approval from all 4 drafts → unified list in technical-proposal.json ONLY (Lead new decisions get D-100+)
+2. **STRIP** decisions_requiring_approval[] from individual final files (entities.json, api-design.json, tech-stack.json, architecture.json) — decisions live ONLY in technical-proposal.json
+3. **BUILD** coverage[] array from Step 4 per-feature analysis
+4. **RESOLVE** cross-draft conflicts (entity names ↔ screen mapping, auth choice ↔ API endpoints)
+5. **FIX** entity ↔ API cross-references (every endpoint.related_entity must match an entity.name)
+6. **BUILD** domain_index for api-design.json from endpoint domain_group values
+7. **GENERATE** statistics: total_entities, total_endpoints, total_decisions, coverage breakdown
 
 ### Per-File Writing
 
@@ -652,17 +722,134 @@ For each output file:
 
 For files > 200 lines: write incrementally (structural shell → content sections → closing).
 
-### technical-proposal.md Structure
+### Final Output File Differences from Drafts
 
-Sections: Executive Summary → 1. Data Model (entity table, relationships, decisions)
-→ 2. API Design (endpoint table or localStorage ops, decisions)
-→ 3. Tech Stack (layer/choice/rationale table, decisions)
-→ 4. Architecture (folder structure, auth flow, data flow, decisions)
-→ All Decisions Requiring Approval (unified D-xxx table)
-→ Coverage Summary (priority × status matrix)
-→ Next Steps (review → approve → implement)
+1. **entities.json:**
+   - Same structure as _entities-draft.json
+   - REMOVE decisions_requiring_approval[] (moved to technical-proposal.json)
+   - KEEP source_features[] on entities (useful for traceability)
+   - STRIP source field from individual attributes (only needed for Lead validation)
+   - ADD coverage metadata per entity: features_covered[]
 
-If BLOCKING gaps exist: prominent warning in Executive Summary.
+2. **api-design.json:**
+   - Same structure as _api-design-draft.json
+   - REMOVE decisions_requiring_approval[] (moved to technical-proposal.json)
+   - STRIP source_features[] from endpoints (only needed for Lead validation)
+   - KEEP business_rules[] on endpoints (consumed by builders)
+   - ADD top-level `domain_index`: `{ "order-management": ["EP-001", ...], "inventory": ["EP-010", ...] }`
+   - This allows implementation agents to jump directly to relevant endpoints by domain
+
+3. **tech-stack.json:**
+   - Same structure as _tech-stack-draft.json
+   - REMOVE decisions_requiring_approval[] (moved to technical-proposal.json)
+
+4. **architecture.json:**
+   - Same structure as _architecture-draft.json
+   - REMOVE decisions_requiring_approval[] (moved to technical-proposal.json)
+
+### technical-proposal.json — Proposal Index (Lightweight)
+
+This file is a NAVIGATION INDEX, not a content dump. It MUST contain:
+
+```json
+{
+  "version": "1.0",
+  "project": "{from index.json, kebab-case}",
+  "generated_at": "ISO-8601",
+  "summary": {
+    "entities_count": 0,
+    "endpoints_count": 0,
+    "estimated_files": 0,
+    "decisions_requiring_approval": 0
+  },
+  "artifacts": {
+    "entities": ".claude/proposal/entities.json",
+    "api_design": ".claude/proposal/api-design.json",
+    "tech_stack": ".claude/proposal/tech-stack.json",
+    "architecture": ".claude/proposal/architecture.json"
+  },
+  "all_decisions_requiring_approval": [
+    { "id": "D-xxx", "source": "entities.json", "category": "entities|api|tech_stack|architecture",
+      "item": "What needs deciding", "options": [], "default": "", "recommended": "", "rationale": "" }
+  ],
+  "coverage_summary": {
+    "must_have": { "total": 0, "fully_covered": 0, "partially_covered": 0, "gaps": 0 },
+    "should_have": { "total": 0, "fully_covered": 0, "partially_covered": 0, "gaps": 0 },
+    "could_have": { "total": 0, "fully_covered": 0, "partially_covered": 0, "gaps": 0 }
+  },
+  "blocking_gaps": [],
+  "reading_guide": {
+    "entities.json": {
+      "full_read_roles": ["backend-builder", "backend-validator"],
+      "summary_only_roles": ["frontend-builder", "infra-builder"],
+      "key_sections": ["entities[].attributes", "entities[].relationships", "entities[].state_machine"]
+    },
+    "api-design.json": {
+      "navigation": "Use domain_index to filter endpoints by relevant domain",
+      "full_read_roles": ["backend-validator"],
+      "domain_filtered_roles": ["backend-builder"],
+      "summary_only_roles": ["frontend-builder"],
+      "key_sections": ["domain_index", "endpoints[].business_rules", "auth"]
+    },
+    "tech-stack.json": {
+      "full_read_roles": ["infra-builder"],
+      "section_map": {
+        "frontend": ["frontend-builder", "frontend-validator"],
+        "backend": ["backend-builder", "backend-validator"],
+        "testing": ["all-validators"]
+      }
+    },
+    "architecture.json": {
+      "full_read_roles": ["infra-builder"],
+      "section_map": {
+        "screen_mapping + component_architecture": ["frontend-builder", "frontend-validator"],
+        "auth_flow + data_flow": ["backend-builder"],
+        "folder_structure": ["infra-builder"]
+      }
+    }
+  },
+  "next_action": {
+    "actor": "user",
+    "action": "Review proposal and provide approval via BA Agent",
+    "response_file": ".claude/approval/approval-response.json"
+  }
+}
+```
+
+CRITICAL: This file is ~50-80 lines MAX. It MUST NOT duplicate entity lists,
+endpoint lists, or tech stack details. Those live in their dedicated files.
+The ONLY content aggregated here is all_decisions_requiring_approval (collected
+from all 4 drafts into one list), coverage_summary (computed in Step 4),
+and reading_guide (static map of role types to file sections).
+
+The role types in reading_guide (e.g., "backend-builder", "frontend-validator")
+are descriptive categories, NOT actual agent names. The implementation-setup
+generator matches its dynamically-created teammates to the closest role type
+when constructing task-specific Read directives.
+
+### technical-proposal.md Structure (Human-Readable Summary)
+
+```
+Sections:
+  Executive Summary (vision, app type, complexity, team composition)
+  → 1. Data Model Overview (entity count, key relationships diagram in ASCII,
+       decision highlights — NOT full entity dump)
+  → 2. API Design Overview (endpoint count by domain_group, auth model summary,
+       key business rules with formulas — NOT full endpoint list)
+  → 3. Technology Decisions (layer/choice/rationale table, override justifications)
+  → 4. Architecture (folder structure tree, auth flow, data flow diagram in ASCII)
+  → 5. Decisions Requiring Approval (full D-xxx table with recommendations)
+  → 6. Coverage Report (priority × status matrix, list of gaps if any,
+       list of inferred rules for should/could features)
+  → 7. Next Steps (review → approve → implement timeline)
+
+If BLOCKING gaps exist: prominent ⚠ warning in Executive Summary.
+
+CRITICAL: This is a SUMMARY document. Reference the JSON files for details.
+  "See entities.json for full attribute list"
+  "See api-design.json endpoints in domain group 'payment' for details"
+  Do NOT reproduce full entity/endpoint lists here.
+```
 
 ### Status Milestones
 
@@ -686,7 +873,7 @@ If BLOCKING gaps exist: prominent warning in Executive Summary.
    proposal: { summary: ".claude/proposal/technical-proposal.md", detailed: "...json",
      artifacts: [entities.json, api-design.json, tech-stack.json, architecture.json, technical-proposal.json, technical-proposal.md] }
    awaiting: "user_approval"
-   decisions_requiring_approval: [collected from all files]
+   decisions_requiring_approval: [from technical-proposal.json all_decisions_requiring_approval]
    next_action: { actor: "user", action: "Review proposal and provide approval via BA Agent" }
 
 2. DELETE trigger file: .ba/triggers/proposal-request.json
@@ -725,3 +912,5 @@ If BLOCKING gaps exist: prominent warning in Executive Summary.
 13. **Teammates must message each other** — When a decision crosses domain boundaries (entity count affects tech stack, auth affects entity model), send a message.
 
 14. **Always use Agent Teams** — No single-session fallback. The team structure is required for this skill.
+
+15. **File size guardrails** — If any single output file exceeds 800 lines: entities.json > 800 → split by entity category (business vs system vs reference). api-design.json > 800 → split by domain_group into api-design-{group}.json files, keep api-design.json as index pointing to split files. architecture.json > 500 → move seed_data to separate seed-data.json. technical-proposal.json MUST stay under 100 lines (it's an index).
