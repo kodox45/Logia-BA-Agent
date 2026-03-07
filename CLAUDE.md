@@ -27,7 +27,7 @@ ENSURE these directories exist (create if missing):
 ```
 FIRST: CHECK .ba/triggers/.cc-prompt content
   IF content starts with "/" → SLASH COMMAND mode:
-    /implementation-setup → READ .claude/skills/implementation-setup/SKILL.md → EXECUTE
+    /foundation-builder → READ .claude/skills/foundation-builder/SKILL.md → EXECUTE
   ELSE → continue to trigger file scan below
 
 SCAN .ba/triggers/ for (check in this order):
@@ -49,6 +49,10 @@ FORM a complete mental model before writing anything
 ```
 
 The trigger's `sources{}` already contains every file path you need — use it as your file map. If `sources{}` includes `.ba/index.json` (e.g., in proposal mode), read it as a source file like any other, but do NOT use it as a navigation intermediary to discover other files.
+
+**PROPOSAL mode override:** The proposal SKILL.md overrides this step — the Lead reads
+classification files only and derives key_signals. Sub-agents read BA files directly and
+write FINAL output files to `.claude/proposal/`. T-VALIDATE validates at 3 checkpoints.
 
 ### Step 3: Activate Skill
 
@@ -84,7 +88,7 @@ Each skill file contains the complete workflow for that mode. Follow it step by 
 | `.claude/implementation/` | FULL | CC (master plan, agents) |
 | `.claude/approval/` | READ only | BA (writes user decisions here) |
 | `.claude/agents/` | READ only | CC (static templates, pre-deployed) |
-| `.claude/skills/implementation-setup/` | READ only | CC (static generator template) |
+| `.claude/skills/foundation-builder/` | READ only | CC (foundation builder orchestrator) |
 | `.claude/skills/implementation/` | FULL | CC (generated orchestration, written by Session 1) |
 | `prototype/` | FULL | CC (prototype output) |
 | `src/`, `server/`, `tests/` | FULL | CC (implementation output) |
@@ -252,26 +256,42 @@ Each mode is handled by a dedicated skill file. The skill contains the complete 
 | Mode | Skill File | Agent Strategy | Output |
 |------|-----------|---------------|--------|
 | Prototype | `.claude/skills/prototype/SKILL.md` | Single-agent | `prototype/index.html` |
-| Proposal | `.claude/skills/proposal/SKILL.md` | Agent Teams (1 Lead + 2 Teammates) | `.claude/proposal/` |
+| Proposal | `.claude/skills/proposal/SKILL.md` | Sub-agents (1 Lead + 4 Core + 1 Validator + 1 Optional) | `.claude/proposal/` |
 | Implementation | `.claude/skills/implementation/SKILL.md` | Agent Teams (dynamic) | `src/`, `server/`, `tests/` |
-| Impl. Setup | `.claude/skills/implementation-setup/SKILL.md` | Single-agent (generator) | `.claude/implementation/`, `.claude/skills/implementation/` |
+| Foundation Builder | `.claude/skills/foundation-builder/SKILL.md` | Sub-agents (Lead + T-FOUNDATION + T-VALIDATE-FOUNDATION + T-DOMAIN x1-4 + T-MASTERPLAN) | `src/`, `.claude/implementation/` |
 
 ### Why Prototype Uses Single-Agent
 
 Prototype produces a single HTML file. A single agent reading all BA files
 directly produces higher quality output than splitting the work.
 
-### Why Proposal Uses Agent Teams
+### Why Proposal Uses Sub-Agents with Validation Checkpoints
 
-Proposal involves two independent analytical domains: data modeling (entities + API)
-and system architecture (tech stack + folder structure). These run in parallel via
-specialized teammates, while the Lead performs deep cross-validation and synthesis.
-Each teammate still reads BA files directly — never from intermediate representations.
+Proposal v5.0 uses context-optimized sub-agents: T-ENTITY, T-SYSTEM (parallel), T-API
+(sequential after entities + tech-stack), T-INTEGRATE (14-check cross-validation), and
+optionally T-PROTO-EXTRACT. Each agent is spawned independently via `Agent()` with
+`run_in_background: true` — no Agent Teams overhead. The Lead waits for completion
+notifications (not file-polling) and spawns T-VALIDATE at 3 checkpoints (V1 after Layer 1,
+V2 after Layer 2, V3 after T-INTEGRATE) to catch and fix errors before they cascade.
+T-VALIDATE can directly fix mechanical issues (naming, IDs, counts) while flagging
+business-logic issues for the Lead. This prevents the error cascade problem where
+T-ENTITY mistakes propagate through T-API to T-INTEGRATE.
 
 ### Why Implementation Uses Agent Teams (Dynamic)
 
-Implementation uses a 2-session approach. Session 1 (generator) analyzes the project
-and generates a project-specific SKILL.md + master plan. Session 2 (Lead) uses the
-generated SKILL.md to coordinate dynamic teammates (builders + validators) via Agent Teams.
+Implementation uses a 2-session approach. Session 1 (foundation builder) analyzes the
+project and generates foundation code, domain packages, and a master plan. Session 2 (Lead)
+reads the master plan to coordinate dynamic teammates (builders + validators) via Agent Teams.
 Team size varies by project: simple apps get 2 teammates, complex apps get 5+.
 Each teammate reads BA files directly — never from intermediate representations.
+
+### Why Foundation Builder Uses Sub-Agents with Validation Checkpoints
+
+Foundation Builder v5.5 uses a cascade-prevention pattern with T-VALIDATE-FOUNDATION
+running at 3 checkpoints: VF1 (after T-FOUNDATION generates code), VF2 (after T-DOMAIN
+generates domain packages), VF3 (after T-MASTERPLAN generates the master plan). Each
+checkpoint validates the current layer's output against BA source files before the next
+layer starts. T-VALIDATE-FOUNDATION can fix mechanical issues (naming, IDs, counts)
+directly while flagging business-logic issues for the Lead. This prevents errors in
+`_project-analysis.json` from cascading silently through foundation code, domain packages,
+and the master plan.
