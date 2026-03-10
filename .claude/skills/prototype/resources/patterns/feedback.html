@@ -1,0 +1,360 @@
+<!-- ═══════════════════════════════════════════════════════════════════
+     PATTERN FILE: feedback.html (v6 — Semantic Tokens)
+     All patterns use theme-agnostic token classes mapped via Tailwind config.
+     Status colors use dedicated status tokens for universal readability.
+     See token-system.md for the full token reference.
+     ═══════════════════════════════════════════════════════════════════ -->
+
+
+<!-- PATTERN: modal-dialog -->
+
+<!-- Trigger -->
+<button @click="modalOpen = true" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded hover:bg-primary-dark transition-colors">
+  Open Modal
+</button>
+
+<!-- Modal -->
+<!-- Requires: Alpine Focus Plugin (@alpinejs/focus) for x-trap -->
+<div x-show="modalOpen" class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="fixed inset-0 bg-black/50"></div>
+  <div class="relative min-h-screen flex items-center justify-center p-4">
+    <div x-trap.noscroll="modalOpen"
+         @click.outside="modalOpen = false"
+         class="relative bg-surface rounded shadow w-full max-w-md p-6"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="modal-title" class="text-lg font-semibold text-heading">{Title}</h3>
+        <button @click="modalOpen = false" class="text-muted hover:text-body transition-colors" aria-label="Close dialog">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="mb-6">
+        <p class="text-sm text-body">{Content goes here.}</p>
+      </div>
+      <div class="flex justify-end gap-3">
+        <button @click="modalOpen = false" class="px-4 py-2 text-sm font-medium text-heading bg-surface-el rounded hover:bg-inset transition-colors">Cancel</button>
+        <button class="px-4 py-2 text-sm font-medium text-white bg-primary rounded hover:bg-primary-dark transition-colors">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Form Modal Variant (max-w-lg) -->
+<div x-trap.noscroll="modalOpen"
+     @click.outside="modalOpen = false"
+     class="relative bg-surface rounded shadow w-full max-w-lg p-6"
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 scale-95"
+     x-transition:enter-end="opacity-100 scale-100">
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-heading">{Form Title}</h3>
+    <button @click="modalOpen = false" class="text-muted hover:text-body transition-colors" aria-label="Close dialog">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <form @submit.prevent="handleSubmit()">
+    <div class="space-y-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-heading mb-1">{Field Label}</label>
+        <input type="text" class="w-full px-3 py-2 text-heading bg-surface border border-line rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+      </div>
+    </div>
+    <div class="flex justify-end gap-3">
+      <button type="button" @click="modalOpen = false" class="px-4 py-2 text-sm font-medium text-heading bg-surface-el rounded hover:bg-inset transition-colors">Cancel</button>
+      <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded hover:bg-primary-dark transition-colors">Save</button>
+    </div>
+  </form>
+</div>
+<!-- /PATTERN: modal-dialog -->
+
+
+<!-- PATTERN: toast-notification -->
+
+<!-- Toast Container (positioned fixed, renders from appState toasts array) -->
+<div class="fixed top-4 right-4 z-[60] space-y-2">
+  <template x-for="toast in toasts" :key="toast.id">
+    <div x-show="toast.visible"
+         x-transition:enter="transition ease-out duration-300 transform"
+         x-transition:enter-start="opacity-0 translate-x-8"
+         x-transition:enter-end="opacity-100 translate-x-0"
+         x-transition:leave="transition ease-in duration-200 transform"
+         x-transition:leave-start="opacity-100 translate-x-0"
+         x-transition:leave-end="opacity-0 translate-x-8"
+         class="w-80" role="alert" aria-live="assertive">
+      <div class="flex items-start gap-3 p-4 rounded shadow"
+           :class="{
+             'bg-status-success-bg border border-success/30': toast.type === 'success',
+             'bg-status-error-bg border border-error/30': toast.type === 'error',
+             'bg-status-warning-bg border border-warning/30': toast.type === 'warning',
+             'bg-status-info-bg border border-info/30': toast.type === 'info'
+           }">
+        <!-- Success Icon -->
+        <svg x-show="toast.type === 'success'" class="w-5 h-5 text-success flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <!-- Error Icon -->
+        <svg x-show="toast.type === 'error'" class="w-5 h-5 text-error flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        <!-- Warning Icon -->
+        <svg x-show="toast.type === 'warning'" class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z"/></svg>
+        <!-- Info Icon -->
+        <svg x-show="toast.type === 'info'" class="w-5 h-5 text-info flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+        <div class="flex-1">
+          <p class="text-sm font-medium"
+             :class="{
+               'text-status-success-text': toast.type === 'success',
+               'text-status-error-text': toast.type === 'error',
+               'text-status-warning-text': toast.type === 'warning',
+               'text-status-info-text': toast.type === 'info'
+             }"
+             x-text="toast.message"></p>
+        </div>
+        <button @click="removeToast(toast.id)" class="flex-shrink-0 text-muted hover:text-body" aria-label="Dismiss notification">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+  </template>
+</div>
+<!-- /PATTERN: toast-notification -->
+
+
+<!-- PATTERN: inline-alert -->
+
+<!-- Success Alert -->
+<div class="flex items-start gap-3 p-4 bg-status-success-bg border border-success/30 rounded" role="alert">
+  <svg class="w-5 h-5 text-success flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+  <div class="flex-1"><p class="text-sm font-medium text-status-success-text">{Success message text}</p></div>
+</div>
+
+<!-- Error Alert -->
+<div class="flex items-start gap-3 p-4 bg-status-error-bg border border-error/30 rounded" role="alert">
+  <svg class="w-5 h-5 text-error flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  <div class="flex-1"><p class="text-sm font-medium text-status-error-text">{Error message text}</p></div>
+</div>
+
+<!-- Warning Alert -->
+<div class="flex items-start gap-3 p-4 bg-status-warning-bg border border-warning/30 rounded" role="alert">
+  <svg class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z"/></svg>
+  <div class="flex-1"><p class="text-sm font-medium text-status-warning-text">{Warning message text}</p></div>
+</div>
+
+<!-- Info Alert -->
+<div class="flex items-start gap-3 p-4 bg-status-info-bg border border-info/30 rounded" role="alert">
+  <svg class="w-5 h-5 text-info flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+  <div class="flex-1"><p class="text-sm font-medium text-status-info-text">{Info message text}</p></div>
+</div>
+
+<!-- Dismissible Alert with Action -->
+<div x-data="{ alertVisible: true }" x-show="alertVisible"
+     x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+     class="flex items-start gap-3 p-4 bg-status-info-bg border border-info/30 rounded" role="alert">
+  <svg class="w-5 h-5 text-info flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/></svg>
+  <div class="flex-1">
+    <p class="text-sm font-medium text-status-info-text">{Message text}</p>
+    <a href="#" class="text-sm font-medium text-primary hover:text-primary-dark underline mt-1 inline-block">{Action link}</a>
+  </div>
+  <button @click="alertVisible = false" class="text-muted hover:text-body flex-shrink-0" aria-label="Dismiss alert">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+  </button>
+</div>
+<!-- /PATTERN: inline-alert -->
+
+
+<!-- PATTERN: loading-spinner -->
+
+<!-- Small Inline Spinner -->
+<svg class="w-4 h-4 animate-spin text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+</svg>
+
+<!-- Medium Section Spinner -->
+<div class="flex flex-col items-center justify-center py-12" role="status" aria-label="Loading">
+  <svg class="w-8 h-8 animate-spin text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+  </svg>
+  <p class="mt-3 text-sm text-body">Loading...</p>
+</div>
+
+<!-- Full-Page Loading Overlay -->
+<div class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface/80" role="status" aria-label="Loading page">
+  <svg class="w-12 h-12 animate-spin text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+  </svg>
+  <p class="mt-4 text-sm font-medium text-body">Loading, please wait...</p>
+</div>
+<!-- /PATTERN: loading-spinner -->
+
+
+<!-- PATTERN: skeleton-loader -->
+
+<!-- Text Line Skeleton -->
+<div class="space-y-3 animate-pulse">
+  <div class="h-4 bg-inset rounded w-3/4"></div>
+  <div class="h-4 bg-inset rounded w-full"></div>
+  <div class="h-4 bg-inset rounded w-5/6"></div>
+</div>
+
+<!-- Card Skeleton -->
+<div class="bg-surface rounded shadow p-6 animate-pulse">
+  <div class="h-40 bg-inset rounded mb-4"></div>
+  <div class="h-4 bg-inset rounded w-2/3 mb-3"></div>
+  <div class="h-3 bg-inset rounded w-full mb-2"></div>
+  <div class="h-3 bg-inset rounded w-4/5"></div>
+</div>
+
+<!-- Table Row Skeleton -->
+<div class="space-y-3 animate-pulse">
+  <div class="flex items-center gap-4 py-3 border-b border-subtle">
+    <div class="h-4 bg-inset rounded w-1/6"></div>
+    <div class="h-4 bg-inset rounded w-2/6"></div>
+    <div class="h-4 bg-inset rounded w-1/6"></div>
+    <div class="h-4 bg-inset rounded w-1/6"></div>
+  </div>
+  <div class="flex items-center gap-4 py-3 border-b border-subtle">
+    <div class="h-4 bg-inset rounded w-1/6"></div>
+    <div class="h-4 bg-inset rounded w-2/6"></div>
+    <div class="h-4 bg-inset rounded w-1/6"></div>
+    <div class="h-4 bg-inset rounded w-1/6"></div>
+  </div>
+</div>
+
+<!-- Avatar + Text Skeleton -->
+<div class="flex items-center gap-4 animate-pulse">
+  <div class="w-10 h-10 bg-inset rounded-full flex-shrink-0"></div>
+  <div class="flex-1 space-y-2">
+    <div class="h-4 bg-inset rounded w-1/3"></div>
+    <div class="h-3 bg-inset rounded w-1/2"></div>
+  </div>
+</div>
+<!-- /PATTERN: skeleton-loader -->
+
+
+<!-- PATTERN: progress-bar -->
+
+<!-- Progress Bar with Label -->
+<div>
+  <div class="flex justify-between items-center mb-1">
+    <span class="text-sm font-medium text-heading">{Label}</span>
+    <span class="text-sm font-medium text-body">65%</span>
+  </div>
+  <div class="w-full bg-inset rounded h-2">
+    <div class="bg-primary h-2 rounded transition-all duration-300" style="width: 65%"></div>
+  </div>
+</div>
+
+<!-- Thin (h-1) -->
+<div class="w-full bg-inset rounded h-1">
+  <div class="bg-primary h-1 rounded transition-all duration-300" style="width: 40%"></div>
+</div>
+
+<!-- Thick with Label (h-4) -->
+<div class="w-full bg-inset rounded h-4">
+  <div class="bg-primary h-4 rounded transition-all duration-300 flex items-center justify-center" style="width: 80%">
+    <span class="text-xs font-medium text-white">80%</span>
+  </div>
+</div>
+<!-- /PATTERN: progress-bar -->
+
+
+<!-- PATTERN: empty-state-message -->
+
+<div class="flex flex-col items-center justify-center py-16 px-4 text-center">
+  <div class="w-16 h-16 mb-4 text-muted">
+    <svg class="w-full h-full" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+    </svg>
+  </div>
+  <h3 class="text-lg font-semibold text-heading mb-1">No {items} yet</h3>
+  <p class="text-sm text-body mb-6 max-w-sm">{Description text.}</p>
+  <button class="px-4 py-2 text-sm font-medium text-white bg-primary rounded hover:bg-primary-dark transition-colors">
+    {Create First Item}
+  </button>
+</div>
+<!-- /PATTERN: empty-state-message -->
+
+
+<!-- PATTERN: confirmation-dialog -->
+<!-- "Are you sure?" destructive action confirmation modal -->
+<!-- Requires: Alpine Focus Plugin (@alpinejs/focus) for x-trap -->
+
+<div x-show="confirmOpen" class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+  <div class="fixed inset-0 bg-black/50"></div>
+  <div class="relative min-h-screen flex items-center justify-center p-4">
+    <div x-trap.noscroll="confirmOpen"
+         class="relative bg-surface rounded shadow-lg w-full max-w-sm p-6"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95">
+      <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 rounded-full bg-status-error-bg">
+        <svg class="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z"/>
+        </svg>
+      </div>
+      <h3 id="confirm-title" class="text-lg font-semibold text-heading text-center">{Confirm Action}</h3>
+      <p id="confirm-desc" class="mt-2 text-sm text-body text-center">{This action cannot be undone. Are you sure you want to proceed?}</p>
+      <div class="mt-6 flex gap-3">
+        <button @click="confirmOpen = false"
+                class="flex-1 px-4 py-2 text-sm font-medium text-heading bg-surface-el rounded hover:bg-inset transition-colors">
+          Cancel
+        </button>
+        <button @click="confirmAction(); confirmOpen = false"
+                class="flex-1 px-4 py-2 text-sm font-medium text-white bg-error rounded hover:brightness-90 transition-colors">
+          {Delete}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- /PATTERN: confirmation-dialog -->
+
+
+<!-- PATTERN: tooltip -->
+<!-- Hover/focus-triggered help text with arrow indicator -->
+
+<div x-data="{ show: false }" class="relative inline-block">
+  <button @mouseenter="show = true" @mouseleave="show = false"
+          @focus="show = true" @blur="show = false"
+          class="text-muted hover:text-body focus:outline-none"
+          :aria-describedby="show ? 'tooltip-content' : null">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"/>
+    </svg>
+  </button>
+  <div x-show="show"
+       x-transition:enter="transition ease-out duration-150"
+       x-transition:enter-start="opacity-0 translate-y-1"
+       x-transition:enter-end="opacity-100 translate-y-0"
+       x-transition:leave="transition ease-in duration-100"
+       x-transition:leave-start="opacity-100 translate-y-0"
+       x-transition:leave-end="opacity-0 translate-y-1"
+       id="tooltip-content"
+       role="tooltip"
+       class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 text-xs text-white bg-heading rounded whitespace-nowrap z-50 shadow-lg">
+    {Tooltip help text}
+    <span class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-heading"></span>
+  </div>
+</div>
+<!-- /PATTERN: tooltip -->
