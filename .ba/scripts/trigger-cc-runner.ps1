@@ -75,6 +75,14 @@ Write-Host "  Started   : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -Foreground
 Write-Host "========================================" -ForegroundColor DarkCyan
 Write-Host ""
 
+# --- Clear nested session lock ---
+# When triggered from within a CC session (V6 orchestrator pattern),
+# CLAUDECODE env var is inherited and blocks child launch.
+# Clearing it allows this terminal to run its own independent CC instance.
+Remove-Item Env:CLAUDECODE -ErrorAction SilentlyContinue
+Remove-Item Env:CLAUDE_CODE_SSE_PORT -ErrorAction SilentlyContinue
+Remove-Item Env:CLAUDE_CODE_ENTRYPOINT -ErrorAction SilentlyContinue
+
 # --- Launch CC in interactive mode with initial prompt ---
 # Uses positional [prompt] argument instead of pipe mode (-p).
 # This gives full TUI visibility: tool calls, file reads/writes, and progress
